@@ -1,1 +1,61 @@
+<!DOCTYPE html>
+<html>
 
+<head>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+  <video controls></video>
+  <script>
+    var video = document.querySelector('video');
+    var assetURL = "VIDEO/VP9/";
+    const VLIST = [
+      "MOJ_JE_TATA_000.webm",
+      "MOJ_JE_TATA_001.webm",
+      "MOJ_JE_TATA_002.webm",
+      "MOJ_JE_TATA_003.webm"
+    ];
+    var mimeCodec = "video/webm; codecs=\"vp9\"";
+
+    if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
+      var mediaSource = new MediaSource;
+      //console.log(mediaSource.readyState); // closed
+      video.src = URL.createObjectURL(mediaSource);
+      mediaSource.onsourceopen = sourceOpen;
+    } else {
+      console.error('Unsupported MIME type or codec: ', mimeCodec);
+    }
+
+    function sourceOpen(_) {
+      //console.log(this.readyState); // open
+      var mediaSource = this;
+      var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+      function loadSource(n) {
+        fetch(assetURL + VLIST[n]).then(res => res.arrayBuffer()).then((buf) => {
+          let ve = document.createElement('video');
+          ve.src = URL.createObjectURL(new Blob([buf]));
+          ve.onloadeddata = () => {
+            sourceBuffer.onupdateend = () => {
+              if (n + 1 < VLIST.length) {
+                sourceBuffer.timestampOffset += ve.duration;
+                loadSource(n + 1);
+              } else {
+                console.log(mediaSource.readyState);
+                if (mediaSource.readyState == 'open') {
+                  mediaSource.endOfStream();
+                  if (navigator.userActivation.hasBeenActive) video.play();
+                  //console.log(mediaSource.readyState); // ended
+                }
+              }
+            };
+            sourceBuffer.appendBuffer(buf);
+          }
+        });
+      }
+      loadSource(0);
+    };
+  </script>
+</body>
+
+</html>
